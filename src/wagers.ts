@@ -23,10 +23,56 @@ export function activeJobs() {
   return [...jobs]
 }
 
-export function activeJobsByToken(token_id: number) {
-  return [...jobs].filter(
+export async function activeJobByToken(token_id: number) {
+  const arr = [...jobs].filter(
     (job) => job.wager.wagers[0].token.token_id === token_id || job.wager.wagers[1].token.token_id === token_id,
   )
+  if (arr.length < 1) return null
+  else {
+    const job = arr[0]
+
+    const token_1_price = await fetchPriceData(job.wager.wagers[0].currency)
+    const token_2_price = await fetchPriceData(job.wager.wagers[1].currency)
+
+    const token_1_change = token_1_price.price - job.prices[0].price
+    const token_2_change = token_2_price.price - job.prices[1].price
+
+    let winner
+
+    if (token_1_change > token_2_change) {
+      winner = job.wager.wagers[0].token
+    } else if (token_2_change > token_1_change) {
+      winner = job.wager.wagers[1].token
+    } else {
+      winner = null
+    }
+
+    return {
+      ...job.wager,
+      prev_prices: job.prices,
+      current_prices: [
+        {
+          denom: token_1_price.symbol,
+          price: token_1_price.price,
+        },
+        {
+          denom: token_2_price.symbol,
+          price: token_2_price.price,
+        },
+      ],
+      change: [
+        {
+          denom: token_1_price.symbol,
+          change: token_1_change,
+        },
+        {
+          denom: token_2_price.symbol,
+          change: token_2_change,
+        },
+      ],
+      current_winner: winner,
+    }
+  }
 }
 
 export async function queueWagerResolution({

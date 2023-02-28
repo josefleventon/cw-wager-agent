@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express'
 import express from 'express'
 
-import { activeJobs, activeJobsByToken } from '../../wagers'
+import { activeJobs, activeJobByToken } from '../../wagers'
 
 const router = express.Router()
 
@@ -16,9 +16,10 @@ router.get(
 
 router.get(
   '/:token_id',
-  (req: Request, res: Response): Response => {
+  async (req: Request, res: Response): Promise<Response> => {
+    const job = await activeJobByToken(parseInt(req.params.token_id))
     return res.status(200).json({
-      job: activeJobsByToken(parseInt(req.params.token_id)),
+      job,
     })
   },
 )
