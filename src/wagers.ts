@@ -33,7 +33,7 @@ export interface JobDetail {
 export let jobs = new Map<[number, number], Job>()
 
 export function activeJobs() {
-  return [...jobs]
+  return [...jobs].map((job) => job[1])
 }
 
 export async function activeJobByToken(token_id: number) {
@@ -152,26 +152,24 @@ async function resolveWager(wager: WagerExport, priceInfo: [TokenData, TokenData
   console.log(`\t${wager.wagers[0].currency}: $${token_1_price}`)
   console.log(`\t${wager.wagers[1].currency}: $${token_2_price}`)
 
+  // Delete job from queue
+  jobs.delete([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id])
+
   // Set the winner
   // The contract will determine the winner based on price data
-  await client
-    .execute(
-      account.address,
-      process.env.WAGER_CONTRACT!,
-      {
-        set_winner: {
-          wager_key: [
-            [wager.wagers[0].token.collection, wager.wagers[0].token.token_id],
-            [wager.wagers[1].token.collection, wager.wagers[1].token.token_id],
-          ],
-          prev_prices: [priceInfo[0].price.toString(), priceInfo[1].price.toString()],
-          current_prices: [token_1_price.toString(), token_2_price.toString()],
-        },
+  await client.execute(
+    account.address,
+    process.env.WAGER_CONTRACT!,
+    {
+      set_winner: {
+        wager_key: [
+          [wager.wagers[0].token.collection, wager.wagers[0].token.token_id],
+          [wager.wagers[1].token.collection, wager.wagers[1].token.token_id],
+        ],
+        prev_prices: [priceInfo[0].price.toString(), priceInfo[1].price.toString()],
+        current_prices: [token_1_price.toString(), token_2_price.toString()],
       },
-      GAS_FEE_CONFIG,
-    )
-    .then(() => {
-      // Remove job from queue
-      jobs.delete([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id])
-    })
+    },
+    GAS_FEE_CONFIG,
+  )
 }
