@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express'
 import express from 'express'
 
-import { activeJobs } from 'src/wagers'
+import { activeJobs } from '../../wagers'
 
 const router = express.Router()
 
