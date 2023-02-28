@@ -2,11 +2,26 @@ import type { NFT, WagerExport, WagerResponse } from './types'
 import type { TokenData } from './types/api'
 
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
-import { fromBech32, toBech32 } from '@cosmjs/encoding'
 import { GAS_FEE_CONFIG, getCosmWasmClient, getSigningCosmWasmClient } from './chain'
 
 import { scheduleJob } from 'node-schedule'
 import { fetchPriceData } from './api'
+
+interface Price {
+  readonly denom: string
+  readonly price: number
+}
+
+export interface Job {
+  wager: WagerExport
+  prices: [Price, Price]
+}
+
+export let jobs = new Set<Job>()
+
+export function activeJobs() {
+  return jobs
+}
 
 export async function queueWagerResolution({
   expires_at,
@@ -38,6 +53,21 @@ export async function queueWagerResolution({
     console.log(`\t${wager.wagers[0].currency}: $${token_1_price.price}`)
     console.log(`\t${wager.wagers[1].currency}: $${token_2_price.price}`)
 
+    // Add job to queue
+    jobs.add({
+      wager,
+      prices: [
+        {
+          denom: token_1_price.symbol,
+          price: token_1_price.price,
+        },
+        {
+          denom: token_2_price.symbol,
+          price: token_2_price.price,
+        },
+      ],
+    })
+
     // Schedule cron job
     scheduleJob(date, () => resolveWager(wager, [token_1_price, token_2_price]))
   } catch (e) {
@@ -61,19 +91,36 @@ async function resolveWager(wager: WagerExport, priceInfo: [TokenData, TokenData
 
   // Set the winner
   // The contract will determine the winner based on price data
-  await client.execute(
-    account.address,
-    process.env.WAGER_CONTRACT!,
-    {
-      set_winner: {
-        wager_key: [
-          [wager.wagers[0].token.collection, wager.wagers[0].token.token_id],
-          [wager.wagers[1].token.collection, wager.wagers[1].token.token_id],
-        ],
-        prev_prices: [priceInfo[0].price.toString(), priceInfo[1].price.toString()],
-        current_prices: [token_1_price.toString(), token_2_price.toString()],
+  await client
+    .execute(
+      account.address,
+      process.env.WAGER_CONTRACT!,
+      {
+        set_winner: {
+          wager_key: [
+            [wager.wagers[0].token.collection, wager.wagers[0].token.token_id],
+            [wager.wagers[1].token.collection, wager.wagers[1].token.token_id],
+          ],
+          prev_prices: [priceInfo[0].price.toString(), priceInfo[1].price.toString()],
+          current_prices: [token_1_price.toString(), token_2_price.toString()],
+        },
       },
-    },
-    GAS_FEE_CONFIG,
-  )
+      GAS_FEE_CONFIG,
+    )
+    .then(() => {
+      // Remove job from queue
+      jobs.delete({
+        wager,
+        prices: [
+          {
+            denom: priceInfo[0].symbol,
+            price: priceInfo[0].price,
+          },
+          {
+            denom: priceInfo[1].symbol,
+            price: priceInfo[1].price,
+          },
+        ],
+      })
+    })
 }

@@ -1,7 +1,7 @@
-import type { Request, Response } from 'express';
-import express from 'express';
+import type { Request, Response } from 'express'
+import express from 'express'
 
-const router = express.Router();
+const router = express.Router()
 
 router.get(
   '/',
@@ -10,9 +10,10 @@ router.get(
     <h2>PixelWizards Wager Agent</h2>
     <ul>
       <li><a href="/status">/status</a></li>
+      <li><a href="/jobs">/jobs</a></li>
     </ul>
-  `);
+  `)
   },
-);
+)
 
-module.exports = router;
+module.exports = router
