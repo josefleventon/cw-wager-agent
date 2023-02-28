@@ -30,16 +30,14 @@ export interface JobDetail {
   current_winner: NFT | null
 }
 
-export let jobs = new Set<Job>()
+export let jobs = new Map<[number, number], Job>()
 
 export function activeJobs() {
   return [...jobs]
 }
 
 export async function activeJobByToken(token_id: number) {
-  const arr = [...jobs].filter(
-    (job) => job.wager.wagers[0].token.token_id === token_id || job.wager.wagers[1].token.token_id === token_id,
-  )
+  const arr = [...jobs].filter((job) => job[0].includes(token_id)).map((job) => job[1])
   if (arr.length < 1) return null
   else {
     const job = arr[0]
@@ -119,7 +117,7 @@ export async function queueWagerResolution({
     console.log(`\t${wager.wagers[1].currency}: $${token_2_price.price}`)
 
     // Add job to queue
-    jobs.add({
+    jobs.set([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id], {
       wager,
       prices: [
         {
@@ -174,18 +172,6 @@ async function resolveWager(wager: WagerExport, priceInfo: [TokenData, TokenData
     )
     .then(() => {
       // Remove job from queue
-      jobs.delete({
-        wager,
-        prices: [
-          {
-            denom: priceInfo[0].symbol,
-            price: priceInfo[0].price,
-          },
-          {
-            denom: priceInfo[1].symbol,
-            price: priceInfo[1].price,
-          },
-        ],
-      })
+      jobs.delete([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id])
     })
 }
