@@ -45,8 +45,8 @@ export async function activeJobByToken(token_id: number) {
     const token_1_price = await fetchPriceData(job.wager.wagers[0].currency)
     const token_2_price = await fetchPriceData(job.wager.wagers[1].currency)
 
-    const token_1_change = token_1_price.price - job.prices[0].price
-    const token_2_change = token_2_price.price - job.prices[1].price
+    const token_1_change = token_1_price.price / job.prices[0].price - 1
+    const token_2_change = token_2_price.price / job.prices[1].price - 1
 
     let winner
 
