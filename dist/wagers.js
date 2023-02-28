@@ -1,17 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.queueWagerResolution = exports.activeJobByToken = exports.activeJobs = exports.jobs = void 0;
+exports.queueWagerResolution = exports.activeJobByToken = exports.activeJobs = void 0;
 const proto_signing_1 = require("@cosmjs/proto-signing");
 const chain_1 = require("./chain");
 const node_schedule_1 = require("node-schedule");
 const api_1 = require("./api");
-exports.jobs = new Map();
+let jobs = new Map();
 function activeJobs() {
-    return [...exports.jobs];
+    return [...jobs].map((job) => job[1]);
 }
 exports.activeJobs = activeJobs;
 async function activeJobByToken(token_id) {
-    const arr = [...exports.jobs].filter((job) => job[0].includes(token_id)).map((job) => job[1]);
+    const arr = [...jobs].filter((job) => job[0].split('-').includes(token_id.toString())).map((job) => job[1]);
     if (arr.length < 1)
         return null;
     else {
@@ -75,7 +75,7 @@ async function queueWagerResolution({ expires_at, collection, token_id, }) {
         console.log(`\t${wager.wagers[0].currency}: $${token_1_price.price}`);
         console.log(`\t${wager.wagers[1].currency}: $${token_2_price.price}`);
         // Add job to queue
-        exports.jobs.set([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id], {
+        jobs.set([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id].join('-'), {
             wager,
             prices: [
                 {
@@ -106,10 +106,13 @@ async function resolveWager(wager, priceInfo) {
     console.log(`✅ Wager resolved between #${wager.wagers[0].token.token_id} & #${wager.wagers[1].token.token_id}`);
     console.log(`\t${wager.wagers[0].currency}: $${token_1_price}`);
     console.log(`\t${wager.wagers[1].currency}: $${token_2_price}`);
+    console.log(jobs);
+    console.log(jobs.get([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id].join('-')));
+    // Delete job from queue
+    jobs.delete([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id].join('-'));
     // Set the winner
     // The contract will determine the winner based on price data
-    await client
-        .execute(account.address, process.env.WAGER_CONTRACT, {
+    await client.execute(account.address, process.env.WAGER_CONTRACT, {
         set_winner: {
             wager_key: [
                 [wager.wagers[0].token.collection, wager.wagers[0].token.token_id],
@@ -118,9 +121,5 @@ async function resolveWager(wager, priceInfo) {
             prev_prices: [priceInfo[0].price.toString(), priceInfo[1].price.toString()],
             current_prices: [token_1_price.toString(), token_2_price.toString()],
         },
-    }, chain_1.GAS_FEE_CONFIG)
-        .then(() => {
-        // Remove job from queue
-        exports.jobs.delete([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id]);
-    });
+    }, chain_1.GAS_FEE_CONFIG);
 }
