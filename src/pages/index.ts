@@ -11,6 +11,7 @@ router.get(
     <ul>
       <li><a href="/status">/status</a></li>
       <li><a href="/jobs">/jobs</a></li>
+      <li><a href="/jobs/[token_id]">/jobs/[token_id]</a></li>
     </ul>
   `)
   },

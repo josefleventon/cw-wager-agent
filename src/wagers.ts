@@ -23,6 +23,12 @@ export function activeJobs() {
   return [...jobs]
 }
 
+export function activeJobsByToken(token_id: number) {
+  return [...jobs].filter(
+    (job) => job.wager.wagers[0].token.token_id === token_id || job.wager.wagers[1].token.token_id === token_id,
+  )
+}
+
 export async function queueWagerResolution({
   expires_at,
   collection,
