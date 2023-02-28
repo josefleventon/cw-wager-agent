@@ -15,6 +15,7 @@ app.use((0, cors_1.default)()); // Allow all CORS
 // Load pages
 app.use('/', require('./pages'));
 app.use('/status', require('./pages/status'));
+app.use('/jobs', require('./pages/jobs'));
 // Start server & listen for requests
 const PORT = process.env.PORT || 3450;
 try {
