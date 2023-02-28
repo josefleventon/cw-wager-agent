@@ -20,7 +20,7 @@ export interface Job {
 export let jobs = new Set<Job>()
 
 export function activeJobs() {
-  return jobs
+  return [...jobs]
 }
 
 export async function queueWagerResolution({
