@@ -1,0 +1,1 @@
+agent: node dist/index.js
