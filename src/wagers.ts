@@ -32,8 +32,12 @@ export interface JobDetail {
 
 let jobs = new Map<string, Job>()
 
-export function activeJobs() {
-  return [...jobs].map((job) => job[1])
+export async function activeJobs() {
+  const jobList = [...jobs].map((job) => job[1])
+  const jobDetailList = jobList.map(async (job) => await activeJobByToken(job.wager.wagers[0].token.token_id))
+
+  const result = await Promise.all(jobDetailList)
+  return result
 }
 
 export async function activeJobByToken(token_id: number) {
@@ -88,7 +92,6 @@ export async function activeJobByToken(token_id: number) {
 
 export async function queueWagerResolution({
   expires_at,
-  collection,
   token_id,
 }: {
   expires_at: string
@@ -98,7 +101,7 @@ export async function queueWagerResolution({
   try {
     // Get wager info
     const { wager }: WagerResponse = await client.queryContractSmart(process.env.WAGER_CONTRACT!, {
-      wager: { token: [collection, token_id] },
+      wager: { token: token_id },
     })
 
     // Fetch price data
@@ -165,10 +168,7 @@ async function resolveWager(wager: WagerExport, priceInfo: [TokenData, TokenData
     process.env.WAGER_CONTRACT!,
     {
       set_winner: {
-        wager_key: [
-          [wager.wagers[0].token.collection, wager.wagers[0].token.token_id],
-          [wager.wagers[1].token.collection, wager.wagers[1].token.token_id],
-        ],
+        wager_key: [wager.wagers[0].token.token_id, wager.wagers[1].token.token_id],
         prev_prices: [priceInfo[0].price.toString(), priceInfo[1].price.toString()],
         current_prices: [token_1_price.toString(), token_2_price.toString()],
       },

@@ -7,9 +7,10 @@ const router = express.Router()
 
 router.get(
   '/',
-  (_: Request, res: Response): Response => {
+  async (_: Request, res: Response): Promise<Response> => {
+    const jobs = await activeJobs()
     return res.status(200).json({
-      jobs: activeJobs(),
+      jobs,
     })
   },
 )
