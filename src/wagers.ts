@@ -104,6 +104,9 @@ export async function queueWagerResolution({
       wager: { token: token_id },
     })
 
+    const existingJob = await activeJobByToken(token_id)
+    if (existingJob) return console.log('Job already exists')
+
     // Fetch price data
     const token_1_price = await fetchPriceData(wager.wagers[0].currency)
     const token_2_price = await fetchPriceData(wager.wagers[1].currency)
