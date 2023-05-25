@@ -11,6 +11,7 @@ import type { Edge } from './types/chain'
 import { scheduleJob } from 'node-schedule'
 import fetch from 'node-fetch'
 import { queueWagerResolution } from './wagers'
+import { fireMatchmakingHook } from './matchmaking'
 
 export async function getCosmWasmClient(rpc: string) {
   if (!rpc) throw new Error('No RPC provided to connect CosmWasmClient.')
@@ -52,6 +53,7 @@ export function loopIndexerQuery() {
   console.log('🚀 Apollo client running')
 
   let prev_edges: Edge[] = []
+  let prev_matchmaking_edges: Edge[] = []
 
   scheduleJob('*/15 * * * * *', async () => {
     const {
@@ -80,6 +82,63 @@ export function loopIndexerQuery() {
           }
         }
       `,
+    })
+
+    const {
+      data: matchmaking_data,
+    }: {
+      data: {
+        events: {
+          edges: Edge[]
+        }
+      }
+    } = await client.query({
+      query: gql`
+        query Events {
+          events(
+            sortBy: BLOCK_HEIGHT_DESC
+            contractFilters: [{ contractType: "crates.io:cw-wager", events: [{ name: "wasm", action: "matchmake" }] }]
+          ) {
+            edges {
+              node {
+                id
+                data
+                contractAddr
+                createdAt
+              }
+            }
+          }
+        }
+      `,
+    })
+
+    const matchmaking_edges = matchmaking_data.events.edges.filter(
+      ({ node }) =>
+        !prev_matchmaking_edges.some(({ node: prev_node }) => prev_node.id === node.id) &&
+        node.contractAddr === process.env.WAGER_CONTRACT &&
+        new Date(node.createdAt) > new Date(Date.now() - 17500),
+    )
+
+    const matchmaking_node_data = matchmaking_edges.map(({ node }) => node.data)
+
+    // Clear previous edges if they exceed 255 items to prevent memory leak
+    if (prev_matchmaking_edges.length > 255) prev_matchmaking_edges = []
+    prev_matchmaking_edges.push(...data.events.edges)
+
+    matchmaking_node_data.forEach(async ({ collection, tokenId, expiresAt }) => {
+      const { data } = await client.query({
+        query: gql`
+          query Token($collectionAddr: String!, $tokenId: String!) {
+            token(collectionAddr: $collectionAddr, tokenId: $tokenId) {
+              tokenId
+              name
+            }
+          }
+        `,
+        variables: { collectionAddr: collection, tokenId },
+      })
+
+      fireMatchmakingHook({ expires_at: expiresAt, collection, name: data.token.name, token_id: parseInt(tokenId) })
     })
 
     const edges = data.events.edges.filter(

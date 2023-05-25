@@ -23,6 +23,17 @@ export interface WagerResponse {
   wager: WagerExport
 }
 
+export interface Config {
+  max_currencies: number
+  amounts: number[]
+  expiries: number[]
+  fee_percent: string
+  fairburn_percent: string
+  fee_address: string
+  collection_address: string
+  matchmaking_expiry: number
+}
+
 export type Currency =
   | 'dot'
   | 'avax'

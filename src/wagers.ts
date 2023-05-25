@@ -1,4 +1,4 @@
-import type { NFT, WagerExport, WagerResponse } from './types'
+import type { Config, NFT, WagerExport, WagerResponse } from './types'
 import type { TokenData } from './types/api'
 
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
@@ -6,6 +6,8 @@ import { GAS_FEE_CONFIG, getCosmWasmClient, getSigningCosmWasmClient } from './c
 
 import { scheduleJob } from 'node-schedule'
 import { fetchPriceData } from './api'
+import axios from 'axios'
+import FormData from 'form-data'
 
 interface Price {
   readonly denom: string
@@ -158,9 +160,6 @@ async function resolveWager(wager: WagerExport, priceInfo: [TokenData, TokenData
   console.log(`\t${wager.wagers[0].currency}: $${token_1_price}`)
   console.log(`\t${wager.wagers[1].currency}: $${token_2_price}`)
 
-  console.log(jobs)
-  console.log(jobs.get([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id].join('-')))
-
   // Delete job from queue
   jobs.delete([wager.wagers[0].token.token_id, wager.wagers[1].token.token_id].join('-'))
 
@@ -178,4 +177,52 @@ async function resolveWager(wager: WagerExport, priceInfo: [TokenData, TokenData
     },
     GAS_FEE_CONFIG,
   )
+
+  const { config }: { config: Config } = await client.queryContractSmart(process.env.WAGER_CONTRACT!, {
+    config: {},
+  })
+
+  const prettyAmount = parseInt(wager.amount) / 1_000_000
+  const fairBurnFee = (parseInt(config.fairburn_percent) / 100) * (prettyAmount * 2)
+  const configFee = (parseInt(config.fee_percent) / 100) * (prettyAmount * 2)
+
+  const webhookContent = {
+    content: null,
+    embeds: [
+      {
+        title: `A duel between #${wager.wagers[0].token.token_id} and #1567 is over`,
+        color: 65392,
+        fields: [
+          {
+            name: 'Winner',
+            value: 'stars14exvl768pree88sthmp9cp3za7z2cha24m9gs9',
+          },
+          {
+            name: 'Wager',
+            value: `${prettyAmount * 2 - (fairBurnFee + configFee)} $STARS`,
+            inline: true,
+          },
+          {
+            name: 'Fee',
+            value: `${configFee} $STARS`,
+            inline: true,
+          },
+          {
+            name: 'Fair Burn',
+            value: `${fairBurnFee} $STARS`,
+            inline: true,
+          },
+        ],
+        author: {
+          name: 'MATCH CONCLUDED  ✅',
+        },
+      },
+    ],
+    attachments: [],
+  }
+
+  const formData = new FormData()
+  formData.append('payload_json', JSON.stringify(webhookContent))
+
+  axios.post(process.env.WEBHOOK_URL!, formData)
 }
