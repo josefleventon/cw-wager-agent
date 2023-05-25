@@ -224,5 +224,11 @@ async function resolveWager(wager: WagerExport, priceInfo: [TokenData, TokenData
   const formData = new FormData()
   formData.append('payload_json', JSON.stringify(webhookContent))
 
-  axios.post(process.env.WEBHOOK_URL!, formData)
+  axios
+    .post(process.env.WEBHOOK_URL!, formData)
+    .then((_) =>
+      console.log(
+        `⛓️ Posted result webhook for #${wager.wagers[0].token.token_id} vs #${wager.wagers[1].token.token_id}`,
+      ),
+    )
 }

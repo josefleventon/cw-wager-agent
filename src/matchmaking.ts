@@ -14,12 +14,14 @@ export async function fireMatchmakingHook({
   const client = await getCosmWasmClient(process.env.RPC!)
 
   // Get wager info
-  const { matchmaking: token_status }: { matchmaking: MatchmakingItemExport } = await client.queryContractSmart(
+  const status: { token_status: { matchmaking: MatchmakingItemExport } } = await client.queryContractSmart(
     process.env.WAGER_CONTRACT!,
     {
       token_status: { token: token_id },
     },
   )
+
+  const token_status = status.token_status.matchmaking
 
   const webhookContent = {
     content: null,
@@ -66,5 +68,7 @@ export async function fireMatchmakingHook({
   const formData = new FormData()
   formData.append('payload_json', JSON.stringify(webhookContent))
 
-  axios.post(process.env.WEBHOOK_URL!, formData)
+  axios
+    .post(process.env.WEBHOOK_URL!, formData)
+    .then((_) => console.log('⛓️ Posted matchmaking webhook for #' + token_status.token.token_id))
 }

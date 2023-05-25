@@ -55,7 +55,7 @@ export function loopIndexerQuery() {
   let prev_edges: Edge[] = []
   let prev_matchmaking_edges: Edge[] = []
 
-  scheduleJob('*/15 * * * * *', async () => {
+  scheduleJob('*/12 * * * * *', async () => {
     const {
       data,
     }: {
@@ -126,19 +126,23 @@ export function loopIndexerQuery() {
     prev_matchmaking_edges.push(...data.events.edges)
 
     matchmaking_node_data.forEach(async ({ collection, tokenId, expiresAt }) => {
-      const { data } = await client.query({
-        query: gql`
-          query Token($collectionAddr: String!, $tokenId: String!) {
-            token(collectionAddr: $collectionAddr, tokenId: $tokenId) {
-              tokenId
-              name
+      try {
+        const { data } = await client.query({
+          query: gql`
+            query Token($collectionAddr: String!, $tokenId: String!) {
+              token(collectionAddr: $collectionAddr, tokenId: $tokenId) {
+                tokenId
+                name
+              }
             }
-          }
-        `,
-        variables: { collectionAddr: collection, tokenId },
-      })
+          `,
+          variables: { collectionAddr: process.env.COLLECTION_CONTRACT!, tokenId },
+        })
 
-      fireMatchmakingHook({ expires_at: expiresAt, collection, name: data.token.name, token_id: parseInt(tokenId) })
+        fireMatchmakingHook({ expires_at: expiresAt, collection, name: data.token.name, token_id: parseInt(tokenId) })
+      } catch (e) {
+        console.error('❌ ERROR: ', (e as Error).message)
+      }
     })
 
     const edges = data.events.edges.filter(
