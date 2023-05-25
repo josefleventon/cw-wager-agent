@@ -53,7 +53,7 @@ export function loopIndexerQuery() {
 
   let prev_edges: Edge[] = []
 
-  scheduleJob('*/6 * * * * *', async () => {
+  scheduleJob('*/15 * * * * *', async () => {
     const {
       data,
     }: {
@@ -86,9 +86,8 @@ export function loopIndexerQuery() {
       ({ node }) =>
         !prev_edges.some(({ node: prev_node }) => prev_node.id === node.id) &&
         node.contractAddr === process.env.WAGER_CONTRACT &&
-        new Date(node.createdAt) > new Date(Date.now() - 15000),
+        new Date(node.createdAt) > new Date(Date.now() - 17500),
     )
-    console.log(edges)
 
     const node_data = edges.map(({ node }) => node.data)
 
