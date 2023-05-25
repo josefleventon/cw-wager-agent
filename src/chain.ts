@@ -55,7 +55,7 @@ export function loopIndexerQuery() {
   let prev_edges: Edge[] = []
   let prev_matchmaking_edges: Edge[] = []
 
-  scheduleJob('*/12 * * * * *', async () => {
+  scheduleJob('*/6 * * * * *', async () => {
     const {
       data,
     }: {
